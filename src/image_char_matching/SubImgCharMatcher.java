@@ -3,7 +3,7 @@ package image_char_matching;
 import java.util.*;
 
 public class SubImgCharMatcher {
-    private HashMap<Character, Double> charToBrightnessMap;
+    private final HashMap<Character, Double> charToBrightnessMap;
     private TreeMap<Double, TreeSet<Character>> brightnessMap;
     private double maxBrightness = Double.NEGATIVE_INFINITY;
     private double minBrightness = Double.POSITIVE_INFINITY;
