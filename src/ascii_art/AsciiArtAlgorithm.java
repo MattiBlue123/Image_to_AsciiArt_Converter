@@ -92,13 +92,6 @@ public class AsciiArtAlgorithm {
         return outputCharArray;
     }
 
-    public static void main(String[] args) {
-        AsciiArtAlgorithm algorithm = new AsciiArtAlgorithm("cat.jpeg",
-                new char[]{'o', 'm', 'a', '.', 'l', 'k', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'}, 2048);
-
-        HtmlAsciiOutput output = new HtmlAsciiOutput("output.html", "Courier New");
-        output.out(algorithm.run());
-    }
 }
 
 

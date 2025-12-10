@@ -84,21 +84,29 @@ public class SubImgCharMatcher {
             // Remove from charToBrightnessMap
             charToBrightnessMap.remove(c);
             // remove from brightnessMap according to normalized brightness
-            // TODO: check if this is correct
             brightnessMap.get(normBrightness(charBrightness)).remove(c);
             return;
         }
-        // so c->brightness is either max or min
+
         // Remove from charToBrightnessMap
         charToBrightnessMap.remove(c);
+        if (charToBrightnessMap.isEmpty()) {
+            brightnessMap.clear();
+            minBrightness = Double.POSITIVE_INFINITY;
+            maxBrightness = Double.NEGATIVE_INFINITY;
+            return;
+        }
         minBrightness = Collections.min(charToBrightnessMap.values());
         maxBrightness = Collections.max(charToBrightnessMap.values());
         updateBrightnessMap();
     }
 
+    public Set<Character> getCharSet() {
+        return charToBrightnessMap.keySet();
+    }
 
     private void updateBrightnessMap() {
-        if(brightnessMap != null) {
+        if (brightnessMap != null) {
             brightnessMap.clear();
         }
         for (Character c : charToBrightnessMap.keySet()) {
@@ -108,7 +116,7 @@ public class SubImgCharMatcher {
     }
 
     private double calculateCharBrightness(char c) {
-        if(savedCharBrightnessData.containsKey(c)) {
+        if (savedCharBrightnessData.containsKey(c)) {
             return savedCharBrightnessData.get(c);
         }
         boolean[][] converted = CharConverter.convertToBoolArray(c);
