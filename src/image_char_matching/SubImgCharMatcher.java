@@ -3,8 +3,10 @@ package image_char_matching;
 import java.util.*;
 
 public class SubImgCharMatcher {
+    private static final Map<Character, Double> savedCharBrightnessData = new HashMap<>();
+
     private final HashMap<Character, Double> charToBrightnessMap;
-    private TreeMap<Double, TreeSet<Character>> brightnessMap;
+    private final TreeMap<Double, TreeSet<Character>> brightnessMap;
     private double maxBrightness = Double.NEGATIVE_INFINITY;
     private double minBrightness = Double.POSITIVE_INFINITY;
 
@@ -16,6 +18,7 @@ public class SubImgCharMatcher {
             minBrightness = Math.min(minBrightness, charBrightness);
             charToBrightnessMap.put(c, charBrightness);
         }
+        brightnessMap = new TreeMap<>();
         updateBrightnessMap();
     }
 
@@ -95,7 +98,9 @@ public class SubImgCharMatcher {
 
 
     private void updateBrightnessMap() {
-        brightnessMap.clear();
+        if(brightnessMap != null) {
+            brightnessMap.clear();
+        }
         for (Character c : charToBrightnessMap.keySet()) {
             double charBrightness = normBrightness(charToBrightnessMap.get(c));
             brightnessMap.computeIfAbsent(charBrightness, k -> new TreeSet<>()).add(c);
@@ -103,6 +108,9 @@ public class SubImgCharMatcher {
     }
 
     private double calculateCharBrightness(char c) {
+        if(savedCharBrightnessData.containsKey(c)) {
+            return savedCharBrightnessData.get(c);
+        }
         boolean[][] converted = CharConverter.convertToBoolArray(c);
         int counter = 0;
         for (int i = 0; i < 16; i++) {
@@ -112,7 +120,10 @@ public class SubImgCharMatcher {
                 }
             }
         }
-        return (double) counter / 256;
+        double charBrightness = (double) counter / 256;
+        savedCharBrightnessData.put(c, charBrightness);
+        return charBrightness;
+
 
     }
 

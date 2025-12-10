@@ -1,69 +1,119 @@
 package ascii_art;
 
+import ascii_output.HtmlAsciiOutput;
 import image.Image;
 import image.ImageProcessing;
 import image_char_matching.SubImgCharMatcher;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class AsciiArtAlgorithm {
 
-    String inputImageFileName;
-    char[] charset;
-    int resolution;
-    Image inputImage;
-    char[][] outputCharArray;
+    private static String savedInputImageFileName = "";
+    private static int savedResolution;
+    private static Image savedInputImage;
+    private static double[][] savedBrightnessMatrix = null;
+    private static SubImgCharMatcher savedCharMatcher;
+    private static char[] lastCharset = null;
 
+    private final String inputImageFileName;
+    private final char[] charset;
+
+    private boolean isSameResolution = false;
+    private boolean isSameImage = false;
 
     public AsciiArtAlgorithm(String inputImageFileName, char[] charset, int resolution) {
         this.inputImageFileName = inputImageFileName;
         this.charset = charset;
-        this.resolution = resolution;
-//        outputCharArray = new char[0][0];
+        if (AsciiArtAlgorithm.savedResolution == resolution) {
+            isSameResolution = true;
+        } else {
+            AsciiArtAlgorithm.savedResolution = resolution;
+        }
 
     }
-
 
     public char[][] run() {
-        try {
-            inputImage = new Image(inputImageFileName);
+        // try to open the input image file
+        if (Objects.equals(AsciiArtAlgorithm.savedInputImageFileName, this.inputImageFileName)) {
+            isSameImage = true;
+        } else {
+            AsciiArtAlgorithm.savedInputImageFileName = this.inputImageFileName;
+            loadInputImage();
         }
-
-        catch (IOException e) {
-            System.out.println("Error: could not read input image file "+inputImageFileName);
-            throw new RuntimeException(e);
-        }
-
-        SubImgCharMatcher initialMatcher = new SubImgCharMatcher(this.charset);
-
-        ImageProcessing processor = new ImageProcessing(inputImage);
-        Image[][] subImagesArray = processor.getSubImages(resolution);
-        double[][] subImagesBrightness = new double[subImagesArray.length * subImagesArray[0].length][1];
-
-        for(int i=0; i<subImagesArray.length; i++) {
-            for (int j=0; j<subImagesArray[0].length; j++) {
-                subImagesBrightness[i*subImagesArray[0].length + j][0] =
-                        processor.calcSubImageGreyPixel(subImagesArray[i][j]);
-            }
-        }
-
-        for(int i=0; i<subImagesBrightness.length; i++) {
-            for(int j=0; j<subImagesBrightness[0].length; j++) {
-                outputCharArray[i][j] = initialMatcher.getCharByImageBrightness(subImagesBrightness[i][j]); // TODO!
-        }
-
-
-
-
-
-
-
-
+        return processImage();
     }
 
+    private void loadInputImage() {
+        try {
+            savedInputImage = new Image(inputImageFileName);
+        } catch (IOException e) {
+            System.err.println("Error: could not read input image file " + inputImageFileName);
+            throw new RuntimeException(e);
+        }
+    }
 
-    //    public static void main(String[] args) {
-//        AsciiArtAlgorithm algorithm = new AsciiArtAlgorithm();
-//        algorithm.run();
-//    }
+    private char[][] processImage() {
+        // initialize the char matcher
+        if (savedCharMatcher == null || !Arrays.equals(lastCharset, this.charset)) {
+            savedCharMatcher = new SubImgCharMatcher(this.charset);
+        }
+
+        // initialize image processor
+        if (!isSameResolution || !isSameImage || savedBrightnessMatrix == null) {
+            ImageProcessing processor = new ImageProcessing(savedInputImage);
+            // get sub-images
+            Image[][] subImagesArray = processor.getSubImages(savedResolution);
+
+            // initialize output char array
+            int rows = subImagesArray.length;
+            int cols = subImagesArray[0].length;
+
+            savedBrightnessMatrix = new double[rows][cols];
+            // calculate brightness of each sub-image and map to char
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    savedBrightnessMatrix[i][j] = processor.calcSubImageGreyPixel(subImagesArray[i][j]);
+
+                }
+            }
+        }
+        char[][] outputCharArray = new char[savedBrightnessMatrix.length][savedBrightnessMatrix[0].length];
+
+        for (int i = 0; i < savedBrightnessMatrix.length; i++) {
+            for (int j = 0; j < savedBrightnessMatrix[0].length; j++) {
+                outputCharArray[i][j] =
+                        savedCharMatcher.getCharByImageBrightness(savedBrightnessMatrix[i][j]);
+            }
+        }
+        lastCharset = Arrays.copyOf(this.charset, this.charset.length);
+        return outputCharArray;
+    }
+
+    public static void main(String[] args) {
+        AsciiArtAlgorithm algorithm = new AsciiArtAlgorithm("cat.jpeg",
+                new char[]{'o', 'm', 'a', '.', 'l', 'k', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'}, 2048);
+
+        HtmlAsciiOutput output = new HtmlAsciiOutput("output.html", "Courier New");
+        output.out(algorithm.run());
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
