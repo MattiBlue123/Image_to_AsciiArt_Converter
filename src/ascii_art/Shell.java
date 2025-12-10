@@ -1,6 +1,6 @@
 package ascii_art;
 
-import ascii_output.HtmlAsciiOutput;
+import ascii_output.AsciiOutput;
 import image.Image;
 import image_char_matching.SubImgCharMatcher;
 
@@ -8,12 +8,15 @@ import java.io.IOException;
 
 public class Shell {
     private static final char[] DEFAULT_CHARSET = "0123456789".toCharArray();
+    private static final String DEFAULT_FONT = "Courier New";
 
     private Image image;
     private final SubImgCharMatcher matcher;
     private int resolution = 2;
     private int maxResolution;
     private int minResolution;
+    private boolean isReversed = false;
+    private AsciiOutput outputMethod = new ascii_output.ConsoleAsciiOutput();
 
 
     public Shell() {
@@ -27,6 +30,7 @@ public class Shell {
             System.err.println("Error: could not read input image file " + imageName);
             return;
         }
+
         maxResolution = image.getWidth();
         minResolution = Math.max(1, image.getWidth() / image.getHeight());
 
@@ -57,10 +61,17 @@ public class Shell {
                     case "remove":
                         removeChars(args);
                         break;
-
                     case "res":
                         setResolution(args);
-                        System.out.println("Current resolution: " + resolution);
+                        break;
+                    case "reverse":
+                        setReversed();
+                        break;
+                    case "output":
+                        setOutputType(args);
+                        break;
+                    case "asciiArt":
+                        runAsciiArt();
                         break;
                     default:
                         System.out.println("Did not execute due to incorrect command.");
@@ -165,6 +176,7 @@ public class Shell {
 
     private void setResolution(String[] args) {
         if (args.length < 2) {
+            System.out.println("Resolution set to " + resolution);
             return;
         }
 
@@ -175,6 +187,8 @@ public class Shell {
                     return;
                 }
                 resolution *= 2;
+                System.out.println("Resolution set to " + resolution);
+
                 break;
             case ("down"):
                 if (resolution / 2 < minResolution) {
@@ -182,20 +196,63 @@ public class Shell {
                     return;
                 }
                 resolution /= 2;
+                System.out.println("Resolution set to " + resolution);
                 break;
+
             default:
                 System.out.println("Did not change resolution due to incorrect format.");
         }
-
     }
 
     private void printCharset() {
-        for (char c : matcher.getCharSet()) {
+        ;
+        for (char c : new java.util.TreeSet<>(matcher.getCharSet())) {
             System.out.print(c + " ");
         }
         System.out.println();
     }
 
+    private void setReversed() {
+        isReversed = !isReversed;
+    }
+
+    private void setOutputType(String[] args) {
+        if (args.length < 2) {
+            System.out.println("Did not change output method due to incorrect format.");
+            return;
+        }
+        switch (args[1]) {
+            case ("console"):
+                outputMethod = new ascii_output.ConsoleAsciiOutput();
+                break;
+            case ("html"):
+                outputMethod = new ascii_output.HtmlAsciiOutput("out.html", DEFAULT_FONT);
+                break;
+            default:
+                System.out.println("Did not change output method due to incorrect format.");
+        }
+    }
+
+    private void runAsciiArt() {
+        if (matcher.getCharSet().size() < 2 || image == null) {
+            System.out.println("Did not execute. Charset is too small.");
+            return;
+        }
+
+        AsciiArtAlgorithm algorithm = new AsciiArtAlgorithm(
+                image,
+                matcher.getCharSet(),
+                resolution,
+                isReversed
+        );
+
+        char[][] asciiArt = algorithm.run();
+        if (outputMethod != null) {
+            outputMethod.out(asciiArt);
+        } else {
+            System.out.println("Output method not set. Use the 'output' command to set it.");
+        }
+    }
 
     public static void main(String[] args) {
         Shell shell = new Shell();

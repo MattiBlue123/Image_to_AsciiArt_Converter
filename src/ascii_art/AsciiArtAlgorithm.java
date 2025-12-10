@@ -1,6 +1,5 @@
 package ascii_art;
 
-import ascii_output.HtmlAsciiOutput;
 import image.Image;
 import image.ImageProcessing;
 import image_char_matching.SubImgCharMatcher;
@@ -8,61 +7,47 @@ import image_char_matching.SubImgCharMatcher;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 
 public class AsciiArtAlgorithm {
 
-    private static String savedInputImageFileName = "";
     private static int savedResolution;
     private static Image savedInputImage;
     private static double[][] savedBrightnessMatrix = null;
     private static SubImgCharMatcher savedCharMatcher;
-    private static char[] lastCharset = null;
+    private static Set<Character> lastCharset = null;
 
-    private final String inputImageFileName;
-    private final char[] charset;
+    private final Image inputImage;
+    private final Set<Character> charSet;
+    private final int resolution;
+    private final boolean isReversed;
 
-    private boolean isSameResolution = false;
-    private boolean isSameImage = false;
 
-    public AsciiArtAlgorithm(String inputImageFileName, char[] charset, int resolution) {
-        this.inputImageFileName = inputImageFileName;
-        this.charset = charset;
-        if (AsciiArtAlgorithm.savedResolution == resolution) {
-            isSameResolution = true;
-        } else {
-            AsciiArtAlgorithm.savedResolution = resolution;
-        }
-
+    public AsciiArtAlgorithm(Image inputImage, Set<Character> charSet,
+                             int resolution, boolean isReverse) {
+        this.inputImage = inputImage;
+        this.charSet = charSet;
+        this.resolution = resolution;
+        this.isReversed = isReverse;
     }
 
     public char[][] run() {
-        // try to open the input image file
-        if (Objects.equals(AsciiArtAlgorithm.savedInputImageFileName, this.inputImageFileName)) {
-            isSameImage = true;
-        } else {
-            AsciiArtAlgorithm.savedInputImageFileName = this.inputImageFileName;
-            loadInputImage();
-        }
-        return processImage();
-    }
-
-    private void loadInputImage() {
-        try {
-            savedInputImage = new Image(inputImageFileName);
-        } catch (IOException e) {
-            System.err.println("Error: could not read input image file " + inputImageFileName);
-            throw new RuntimeException(e);
-        }
-    }
-
-    private char[][] processImage() {
         // initialize the char matcher
-        if (savedCharMatcher == null || !Arrays.equals(lastCharset, this.charset)) {
-            savedCharMatcher = new SubImgCharMatcher(this.charset);
+        if (savedCharMatcher == null || !Objects.equals(lastCharset, this.charSet)) {
+            char[] charArrayRepresentation = new char[this.charSet.size()];
+            int i = 0;
+            for (Character c : this.charSet) {
+                charArrayRepresentation[i++] = c;
+            }
+            savedCharMatcher = new SubImgCharMatcher(charArrayRepresentation);
+            lastCharset = Set.copyOf(this.charSet);
         }
 
         // initialize image processor
-        if (!isSameResolution || !isSameImage || savedBrightnessMatrix == null) {
+        if (this.inputImage != savedInputImage || this.resolution != savedResolution) {
+            savedInputImage = this.inputImage;
+            savedResolution = this.resolution;
+
             ImageProcessing processor = new ImageProcessing(savedInputImage);
             // get sub-images
             Image[][] subImagesArray = processor.getSubImages(savedResolution);
@@ -80,18 +65,21 @@ public class AsciiArtAlgorithm {
                 }
             }
         }
-        char[][] outputCharArray = new char[savedBrightnessMatrix.length][savedBrightnessMatrix[0].length];
 
+        char[][] outputCharArray = new char[savedBrightnessMatrix.length][savedBrightnessMatrix[0].length];
         for (int i = 0; i < savedBrightnessMatrix.length; i++) {
             for (int j = 0; j < savedBrightnessMatrix[0].length; j++) {
-                outputCharArray[i][j] =
-                        savedCharMatcher.getCharByImageBrightness(savedBrightnessMatrix[i][j]);
+                double brightness = savedBrightnessMatrix[i][j];
+                if (isReversed) {
+                    brightness = 1.0 - brightness;
+                }
+                outputCharArray[i][j] = savedCharMatcher.getCharByImageBrightness(brightness);
             }
         }
-        lastCharset = Arrays.copyOf(this.charset, this.charset.length);
+
+
         return outputCharArray;
     }
-
 }
 
 
