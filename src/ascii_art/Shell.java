@@ -211,6 +211,9 @@ public class Shell {
      * - Range of characters (e.g., "a-z" or "z-a")
      * - Special keywords: "all" to add/remove all ASCII characters,
      * "space" to add/remove the space character
+     * This method has been updated to use executeCharOperation and executeCharRangeOperation helper methods,
+     * which encapsulate the logic for handling single characters, ranges, and special keywords,
+     * and call the updateMatcher method to perform the actual addition or removal.
      *
      * @param args  - The command arguments, where args[1] specifies the characters to add/remove.
      * @param isAdd - True if adding characters, false if removing characters.
@@ -231,68 +234,9 @@ public class Shell {
 
         // args[0] is the command itself
         String param = args[1];
+        executeCharOperation(param, isAdd, errorMessage);
 
-        switch (param) {
-            case ALL_CHARS_COMMAND:
-                for (char c = MIN_ASCII_VALUE; c <= MAX_ASCII_VALUE; c++) {
-                    if (isAdd) {
-                        matcher.addChar(c);
-                    } else {
-                        matcher.removeChar(c);
-                    }
-                }
-                break;
 
-            case SPACE_COMMAND:
-                if (isAdd) {
-                    matcher.addChar(' ');
-                } else {
-                    matcher.removeChar(' ');
-                }
-                break;
-
-            // handle single character or range input
-            default:
-                // single Char
-                if (param.length() == 1) {
-                    char c = param.charAt(0);
-                    // making sure it's in the valid ASCII range
-                    if (c < MIN_ASCII_VALUE || c > MAX_ASCII_VALUE) {
-                        throw new UsageException(errorMessage);
-                    }
-
-                    if (isAdd) {
-                        matcher.addChar(c);
-                    } else {
-                        matcher.removeChar(c);
-                    }
-                }
-                // Handle Range (e.g., a-z), it's always in the format <char>-<char>
-                else if (param.length() == ADD_RANGE_COMMAND_LENGTH &&
-                        param.charAt(1) == ADD_RANGE_COMMAND_PARSER_CHAR) {
-                    char start = param.charAt(0);
-                    char end = param.charAt(ADD_RANGE_COMMAND_LENGTH - 1);
-
-                    // here handling reverse range case (e.g., z-a)
-                    if (start > end) {
-                        char temp = start;
-                        start = end;
-                        end = temp;
-                    }
-
-                    for (char c = start; c <= end; c++) {
-                        if (isAdd) {
-                            matcher.addChar(c);
-                        } else {
-                            matcher.removeChar(c);
-                        }
-                    }
-
-                    // Invalid format
-                } else {
-                    throw new UsageException(errorMessage);
-                }
-        }
     }
 
     /**
@@ -313,6 +257,7 @@ public class Shell {
      * within the defined minimum and maximum boundaries.
      *
      * @param args - The command arguments, where args[1] specifies "up" or "down".
+     * @throws UsageException if the command format is incorrect or if the resolution exceeds boundaries.
      */
     private void setResolution(String[] args) throws UsageException {
         if (args.length < MIN_ARGS_LENGTH) {
@@ -358,6 +303,7 @@ public class Shell {
      * Supported output methods are "console" and "html".
      *
      * @param args - The command arguments, where args[1] specifies the output method.
+     * @throws UsageException if the command format is incorrect.
      */
     private void setOutputType(String[] args) throws UsageException {
         if (args.length < MIN_ARGS_LENGTH) {
@@ -383,6 +329,8 @@ public class Shell {
      * Runs the ASCII art generation algorithm and outputs the result
      * using the specified output method.
      * Checks if the character set is valid before execution.
+     *
+     * @throws UsageException if the character set is too small.
      */
     private void runAsciiArt() throws UsageException {
         if (matcher.getCharSet().size() < MINIMAL_CHARSET_SIZE || image == null) {
@@ -401,6 +349,89 @@ public class Shell {
         char[][] asciiArt = algorithm.run();
         // render the output using the specified method
         outputMethod.out(asciiArt);
+    }
+
+    /**
+     * Executes the add/remove operation for a single character or special keywords.
+     *
+     * @param param        The character parameter or special keyword.
+     * @param isAdd        True to add characters, false to remove them.
+     * @param errorMessage The error message to use in case of incorrect format.
+     * @throws UsageException if the command format is incorrect.
+     */
+    private void executeCharOperation(String param,
+                                      boolean isAdd,
+                                      String errorMessage) throws UsageException {
+
+        switch (param) {
+            case ALL_CHARS_COMMAND:
+                for (char c = MIN_ASCII_VALUE; c <= MAX_ASCII_VALUE; c++) {
+                    updateMatcher(c, isAdd);
+                }
+                break;
+
+            case SPACE_COMMAND:
+                updateMatcher(' ', isAdd);
+                break;
+
+            // handle single character or range input
+            default:
+                // single Char
+                if (param.length() == 1) {
+                    char c = param.charAt(0);
+                    // making sure it's in the valid ASCII range
+                    if (c < MIN_ASCII_VALUE || c > MAX_ASCII_VALUE) {
+                        throw new UsageException(errorMessage);
+                    }
+                    updateMatcher(c, isAdd);
+                }
+
+                // Handle Range (e.g., a-z), it's always in the format <char>-<char>
+                else if (param.length() == ADD_RANGE_COMMAND_LENGTH &&
+                        param.charAt(1) == ADD_RANGE_COMMAND_PARSER_CHAR) {
+                    executeCharRangeOperation(param, isAdd);
+                    // if invalid format
+                } else {
+                    throw new UsageException(errorMessage);
+                }
+        }
+
+    }
+
+    /**
+     * Executes the add/remove operation for a range of characters.
+     *
+     * @param param The range parameter in the format "a-z" or "z-a".
+     * @param isAdd True to add characters, false to remove them.
+     */
+    private void executeCharRangeOperation(String param, boolean isAdd) {
+        char start = param.charAt(0);
+        char end = param.charAt(ADD_RANGE_COMMAND_LENGTH - 1);
+
+        // here handling reverse range case (e.g., z-a)
+        if (start > end) {
+            char temp = start;
+            start = end;
+            end = temp;
+        }
+
+        for (char c = start; c <= end; c++) {
+            updateMatcher(c, isAdd);
+        }
+    }
+
+    /**
+     * Updates the character matcher by adding or removing a character.
+     *
+     * @param c     The character to add or remove.
+     * @param isAdd True to add the character, false to remove it.
+     */
+    private void updateMatcher(char c, boolean isAdd) {
+        if (isAdd) {
+            matcher.addChar(c);
+        } else {
+            matcher.removeChar(c);
+        }
     }
 
     /**

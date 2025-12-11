@@ -37,6 +37,9 @@ public class SubImgCharMatcher {
 
     /**
      * Constructs a SubImgCharMatcher with the specified character set.
+     * Calculates the brightness of each character and initializes the char to brightness map,
+     * Max value and Min value.
+     * Initializes the brightness map according to normalized brightness values.
      *
      * @param charset The set of characters to be used for matching brightness values.
      */
