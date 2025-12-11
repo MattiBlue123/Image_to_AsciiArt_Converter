@@ -8,6 +8,12 @@ package ascii_art;
  * @author Zohar Mattatia and Amit Tzur
  */
 public class UsageException extends Exception {
+
+    /**
+     * Constructs a UsageException with the specified detail message.
+     *
+     * @param message The detail message.
+     */
     public UsageException(String message) {
         super(message);
     }
