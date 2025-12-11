@@ -15,6 +15,7 @@ import java.util.Set;
  * The algorithm supports caching of intermediate results to optimize performance
  * when the same image and resolution are used multiple times.
  * It also allows for reversing the brightness mapping to create different visual effects.
+ *
  * @author Zohar Mattatia and Amit Tzur
  */
 public class AsciiArtAlgorithm {
@@ -66,16 +67,8 @@ public class AsciiArtAlgorithm {
      */
     public char[][] run() {
         // initialize char matcher - if charset changed, recreate it
-        if (savedCharMatcher == null || !Objects.equals(lastCharset, this.charSet)) {
-            char[] charArrayRepresentation = new char[this.charSet.size()];
-            int i = 0;
-            for (Character c : this.charSet) {
-                charArrayRepresentation[i++] = c;
-            }
-            savedCharMatcher = new SubImgCharMatcher(charArrayRepresentation);
-            // update "last charset" cache for next time
-            lastCharset = Set.copyOf(this.charSet);
-        }
+        initCharMatcher();
+
 
         // calculate brightness matrix - if image or resolution changed, recalculate it
         // checking if image or resolution changed
@@ -120,6 +113,19 @@ public class AsciiArtAlgorithm {
         }
 
         return outputCharArray;
+    }
+
+    private void initCharMatcher() {
+        if (savedCharMatcher == null || !Objects.equals(lastCharset, this.charSet)) {
+            char[] charArrayRepresentation = new char[this.charSet.size()];
+            int i = 0;
+            for (Character c : this.charSet) {
+                charArrayRepresentation[i++] = c;
+            }
+            savedCharMatcher = new SubImgCharMatcher(charArrayRepresentation);
+            // update "last charset" cache for next time
+            lastCharset = Set.copyOf(this.charSet);
+        }
     }
 }
 
