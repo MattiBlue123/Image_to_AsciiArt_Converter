@@ -98,6 +98,8 @@ public class Shell {
             "incorrect format.";
     /* charset too small error message */
     private static final String CHARSET_SMALL_SIZE_ERROR = "Did not execute. Charset is too small.";
+    /* unexpected error message */
+    private static final String UNEXPECTED_ERROR = "An unexpected error occurred: ";
 
     /* ================== Instance Private Variables ================== */
     /* current resolution, initially set to 2 by default */
@@ -146,7 +148,6 @@ public class Shell {
         System.out.print(SHELL_PREFIX);
         String currInstruction = KeyboardInput.readLine();
 
-        // Check if input is not null and continue until "exit" command
         while (true) {
             // Splitting the instruction by whitespace,
             // and trimming to avoid leading/trailing spaces becoming empty args in the array
@@ -154,36 +155,45 @@ public class Shell {
 
             // making sure there's at least one argument (the command)
             if (args.length > 0 && !args[0].isEmpty()) {
-                String command = args[0];
+                try {
+                    String command = args[0];
 
-                switch (command) {
-                    case CHARS_COMMAND:
-                        printCharset();
-                        break;
-                    case ADD_COMMAND:
-                        removeAndAddOperation(args, true);
-                        break;
-                    case REMOVE_COMMAND:
-                        removeAndAddOperation(args, false);
-                        break;
-                    case RES_COMMAND:
-                        setResolution(args);
-                        break;
-                    case REVERSE_COMMAND:
-                        setReversed();
-                        break;
-                    case OUTPUT_COMMAND:
-                        setOutputType(args);
-                        break;
-                    case ASCII_ART_COMMAND:
-                        runAsciiArt();
-                        break;
-                    case EXIT_COMMAND:
-                        // exit the shell
-                        return;
-                    default:
-                        System.out.println(INCORRECT_COMMAND_ERROR_MESSAGE);
+                    switch (command) {
+                        case ADD_COMMAND:
+                            removeAndAddOperation(args, true);
+                            break;
+                        case REMOVE_COMMAND:
+                            removeAndAddOperation(args, false);
+                            break;
+                        case CHARS_COMMAND:
+                            printCharset();
+                            break;
+                        case RES_COMMAND:
+                            setResolution(args);
+                            break;
+                        case REVERSE_COMMAND:
+                            setReversed();
+                            break;
+                        case OUTPUT_COMMAND:
+                            setOutputType(args);
+                            break;
+                        case ASCII_ART_COMMAND:
+                            runAsciiArt();
+                            break;
+                        case EXIT_COMMAND:
+                            // exit the shell
+                            return;
+                        default:
+                            throw new UsageException(INCORRECT_COMMAND_ERROR_MESSAGE);
+                    }
+                } catch (UsageException ue) {
+                    System.out.println(ue.getMessage());
+                } catch (Exception e) {
+                    System.out.println(UNEXPECTED_ERROR + e.getMessage());
+                    return;
                 }
+
+
             }
 
             System.out.print(SHELL_PREFIX);
@@ -204,8 +214,9 @@ public class Shell {
      *
      * @param args  - The command arguments, where args[1] specifies the characters to add/remove.
      * @param isAdd - True if adding characters, false if removing characters.
+     * @throws UsageException if the command format is incorrect.
      */
-    private void removeAndAddOperation(String[] args, boolean isAdd) {
+    private void removeAndAddOperation(String[] args, boolean isAdd) throws UsageException {
         // Determine the correct error message based on the operation
         String errorMessage;
         if (isAdd) {
@@ -215,8 +226,7 @@ public class Shell {
         }
 
         if (args.length < MIN_ARGS_LENGTH) {
-            System.out.println(errorMessage);
-            return;
+            throw new UsageException(errorMessage);
         }
 
         // args[0] is the command itself
@@ -248,8 +258,7 @@ public class Shell {
                     char c = param.charAt(0);
                     // making sure it's in the valid ASCII range
                     if (c < MIN_ASCII_VALUE || c > MAX_ASCII_VALUE) {
-                        System.out.println(errorMessage);
-                        return;
+                        throw new UsageException(errorMessage);
                     }
 
                     if (isAdd) {
@@ -261,7 +270,6 @@ public class Shell {
                 // Handle Range (e.g., a-z), it's always in the format <char>-<char>
                 else if (param.length() == ADD_RANGE_COMMAND_LENGTH &&
                         param.charAt(1) == ADD_RANGE_COMMAND_PARSER_CHAR) {
-
                     char start = param.charAt(0);
                     char end = param.charAt(ADD_RANGE_COMMAND_LENGTH - 1);
 
@@ -279,52 +287,11 @@ public class Shell {
                             matcher.removeChar(c);
                         }
                     }
+
+                    // Invalid format
+                } else {
+                    throw new UsageException(errorMessage);
                 }
-
-                // Invalid format
-                else {
-                    System.out.println(errorMessage);
-                }
-        }
-    }
-
-    /**
-     * Sets the resolution of the ASCII art based on the provided arguments.
-     * The resolution can be increased or decreased by a factor of 2,
-     * within the defined minimum and maximum boundaries.
-     *
-     * @param args - The command arguments, where args[1] specifies "up" or "down".
-     */
-    private void setResolution(String[] args) {
-        if (args.length < MIN_ARGS_LENGTH) {
-            System.out.println(RESOLUTION_SETTING_PROMPT + resolution + ".");
-            return;
-        }
-        // args[0] is the command itself, args[1] is "up" or "down"
-        switch (args[1]) {
-            // if up
-            case RES_UP_COMMAND:
-                if (resolution * BASE_FOR_RESOLUTION_CALCULATION > maxResolution) {
-                    System.out.println(RESOLUTION_EXCEEDING_BOUNDARIES_ERROR);
-                    return;
-                }
-                resolution *= BASE_FOR_RESOLUTION_CALCULATION;
-                System.out.println(RESOLUTION_SETTING_PROMPT + resolution + ".");
-
-                break;
-
-            // if down
-            case RES_DOWN_COMMAND:
-                if (resolution / BASE_FOR_RESOLUTION_CALCULATION < minResolution) {
-                    System.out.println(RESOLUTION_EXCEEDING_BOUNDARIES_ERROR);
-                    return;
-                }
-                resolution /= BASE_FOR_RESOLUTION_CALCULATION;
-                System.out.println(RESOLUTION_SETTING_PROMPT + resolution);
-                break;
-
-            default:
-                System.out.println(RES_COMMAND_INCORRECT_FORMAT_ERROR);
         }
     }
 
@@ -341,6 +308,44 @@ public class Shell {
     }
 
     /**
+     * Sets the resolution of the ASCII art based on the provided arguments.
+     * The resolution can be increased or decreased by a factor of 2,
+     * within the defined minimum and maximum boundaries.
+     *
+     * @param args - The command arguments, where args[1] specifies "up" or "down".
+     */
+    private void setResolution(String[] args) throws UsageException {
+        if (args.length < MIN_ARGS_LENGTH) {
+            System.out.println(RESOLUTION_SETTING_PROMPT + resolution + ".");
+            return;
+        }
+        // args[0] is the command itself, args[1] is "up" or "down"
+        switch (args[1]) {
+            // if up
+            case RES_UP_COMMAND:
+                if (resolution * BASE_FOR_RESOLUTION_CALCULATION > maxResolution) {
+                    throw new UsageException(RESOLUTION_EXCEEDING_BOUNDARIES_ERROR);
+                }
+                resolution *= BASE_FOR_RESOLUTION_CALCULATION;
+                System.out.println(RESOLUTION_SETTING_PROMPT + resolution + ".");
+
+                break;
+
+            // if down
+            case RES_DOWN_COMMAND:
+                if (resolution / BASE_FOR_RESOLUTION_CALCULATION < minResolution) {
+                    throw new UsageException(RESOLUTION_EXCEEDING_BOUNDARIES_ERROR);
+                }
+                resolution /= BASE_FOR_RESOLUTION_CALCULATION;
+                System.out.println(RESOLUTION_SETTING_PROMPT + resolution);
+                break;
+
+            default:
+                throw new UsageException(RES_COMMAND_INCORRECT_FORMAT_ERROR);
+        }
+    }
+
+    /**
      * Toggles the reversed state for brightness mapping.
      * If currently reversed, it will be set to normal, and vice versa.
      */
@@ -354,10 +359,9 @@ public class Shell {
      *
      * @param args - The command arguments, where args[1] specifies the output method.
      */
-    private void setOutputType(String[] args) {
+    private void setOutputType(String[] args) throws UsageException {
         if (args.length < MIN_ARGS_LENGTH) {
-            System.out.println(OUTPUT_METHOD_COMMAND_FORMAT_ERROR);
-            return;
+            throw new UsageException(OUTPUT_METHOD_COMMAND_FORMAT_ERROR);
         }
         // args[0] is the command itself, args[1] is the output method
         switch (args[1]) {
@@ -371,7 +375,7 @@ public class Shell {
                         new ascii_output.HtmlAsciiOutput(DEFAULT_HTML_OUTPUT_FILE_NAME, DEFAULT_FONT);
                 break;
             default:
-                System.out.println(OUTPUT_METHOD_COMMAND_FORMAT_ERROR);
+                throw new UsageException(OUTPUT_METHOD_COMMAND_FORMAT_ERROR);
         }
     }
 
@@ -380,10 +384,9 @@ public class Shell {
      * using the specified output method.
      * Checks if the character set is valid before execution.
      */
-    private void runAsciiArt() {
+    private void runAsciiArt() throws UsageException {
         if (matcher.getCharSet().size() < MINIMAL_CHARSET_SIZE || image == null) {
-            System.out.println(CHARSET_SMALL_SIZE_ERROR);
-            return;
+            throw new UsageException(CHARSET_SMALL_SIZE_ERROR);
         }
 
         // initialize the ascii art algorithm with the current settings

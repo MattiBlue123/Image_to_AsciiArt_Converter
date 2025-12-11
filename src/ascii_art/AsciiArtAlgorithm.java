@@ -68,8 +68,37 @@ public class AsciiArtAlgorithm {
     public char[][] run() {
         // initialize char matcher - if charset changed, recreate it
         initCharMatcher();
+        // calculate brightness matrix - if image or resolution changed, recalculate it
+        // otherwise, use cached one
+        calculateBrightnessMatrix();
+        // map brightness matrix to an ascii art char array
+        return mapBrightnessMatrixToCharArray();
+    }
 
+    /**
+     * A helper method that initializes the character matcher based on the current character set.
+     * If the character set has changed since the last run, a new SubImgCharMatcher
+     * is created and cached for future use.
+     */
+    private void initCharMatcher() {
+        if (savedCharMatcher == null || !Objects.equals(lastCharset, this.charSet)) {
+            char[] charArrayRepresentation = new char[this.charSet.size()];
+            int i = 0;
+            for (Character c : this.charSet) {
+                charArrayRepresentation[i++] = c;
+            }
+            savedCharMatcher = new SubImgCharMatcher(charArrayRepresentation);
+            // update "last charset" cache for next time
+            lastCharset = Set.copyOf(this.charSet);
+        }
+    }
 
+    /**
+     * Calculates the brightness matrix for the current input image and resolution.
+     * If the input image or resolution has changed since the last run,
+     * the brightness matrix is recalculated and cached for future use.
+     */
+    private void calculateBrightnessMatrix() {
         // calculate brightness matrix - if image or resolution changed, recalculate it
         // checking if image or resolution changed
         // image: by reference (same object or not), since in a specific run we upload only once
@@ -92,11 +121,18 @@ public class AsciiArtAlgorithm {
             for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < cols; j++) {
                     savedBrightnessMatrix[i][j] = processor.calcSubImageGreyPixel(subImagesArray[i][j]);
-
                 }
             }
         }
+    }
 
+    /**
+     * Maps the saved brightness matrix to a 2D array of characters using the saved character matcher.
+     * If the reverse flag is set, the brightness values are inverted before mapping.
+     *
+     * @return A 2D array of characters representing the ASCII art.
+     */
+    private char[][] mapBrightnessMatrixToCharArray() {
         // create output char array based on brightness matrix and char matcher
         char[][] outputCharArray = new char[savedBrightnessMatrix.length][savedBrightnessMatrix[0].length];
         // map brightness to chars
@@ -113,19 +149,6 @@ public class AsciiArtAlgorithm {
         }
 
         return outputCharArray;
-    }
-
-    private void initCharMatcher() {
-        if (savedCharMatcher == null || !Objects.equals(lastCharset, this.charSet)) {
-            char[] charArrayRepresentation = new char[this.charSet.size()];
-            int i = 0;
-            for (Character c : this.charSet) {
-                charArrayRepresentation[i++] = c;
-            }
-            savedCharMatcher = new SubImgCharMatcher(charArrayRepresentation);
-            // update "last charset" cache for next time
-            lastCharset = Set.copyOf(this.charSet);
-        }
     }
 }
 

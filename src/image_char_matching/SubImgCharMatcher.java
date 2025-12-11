@@ -23,7 +23,7 @@ public class SubImgCharMatcher {
     /* Dimensions of the pixel grid for character representation */
     private static final int PIXELS_GRID_DIMENSIONS_FOR_CHARACTERS = 16;
     /* Total number of pixels in the grid */
-    public static final int PIXELS_IN_GRID = 256;
+    private static final int PIXELS_IN_GRID = 256;
 
     /* ================== Private Instance Variables ================== */
     /* Mapping of characters to their brightness values */
